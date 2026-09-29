@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Admin - App 9000{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Admin</h1>
+  <p class="muted">Hanya ahli group {{ config.ADMIN_GROUP or "(belum ditetapkan)" }} boleh lihat halaman ini.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;font-size:18px">Pengguna</h2>
+  <table>
+    <tr><th>User</th><th>Lawatan</th><th>Terakhir</th></tr>
+    {% for u in users %}
+    <tr><td>{{ u.user }}</td><td>{{ u.visits }}</td><td>{{ u.last_seen }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;font-size:18px">20 akses terkini</h2>
+  <table>
+    <tr><th>Masa</th><th>User</th><th>Path</th></tr>
+    {% for r in recent %}
+    <tr><td>{{ r.at }}</td><td>{{ r.user }}</td><td>{{ r.path }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

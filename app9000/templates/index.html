@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Selamat datang, {{ g.username }}</h1>
+  <p class="muted">Anda login sebagai <strong>{{ g.user }}</strong> melalui Windows. Tiada password diperlukan.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;font-size:18px">Nota saya</h2>
+  <form method="post" action="{{ url_for('add_note') }}">
+    <textarea name="body" placeholder="Tulis nota..." required></textarea>
+    <p><button type="submit">Simpan</button></p>
+  </form>
+
+  {% if notes %}
+  <ul class="notes">
+    {% for n in notes %}
+    <li>
+      <div>{{ n.body }}<br><span class="muted">{{ n.created }}</span></div>
+      <form method="post" action="{{ url_for('delete_note', note_id=n.id) }}">
+        <button class="link" type="submit">Padam</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Belum ada nota. Nota anda hanya boleh dilihat oleh anda.</p>
+  {% endif %}
+</div>
+{% endblock %}

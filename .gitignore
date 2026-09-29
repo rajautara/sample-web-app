@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+app9000/data/
+app9000/logs/*.log
+venv/
+.env
