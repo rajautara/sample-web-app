@@ -5,17 +5,65 @@ IIS buat Windows Authentication, kemudian forward token user melalui header
 'X-IIS-WindowsAuthToken'. Modul ini tukar token itu kepada:
   - g.user        -> "DOMAIN\\username"
   - g.username    -> "username"
+  - g.domain      -> "DOMAIN"
+  - g.display_name -> displayName dari Active Directory (atau username)
+  - g.email       -> mail dari Active Directory (atau None)
   - g.is_admin    -> True kalau user ahli ADMIN_GROUP
 
 Untuk test di PC sendiri (tanpa IIS): set DEV_USER=DOMAIN\\nama.
 DEV_USER diabaikan bila app berjalan di bawah IIS.
 """
 import os
-from functools import wraps
+import logging
+import time
+from functools import lru_cache, wraps
 
 from flask import abort, g, request
 
 RUNNING_UNDER_IIS = "HTTP_PLATFORM_PORT" in os.environ
+logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=256)
+def _read_ad_profile(user, cache_period):
+    """Cari akaun Windows yang disahkan dalam AD; cache selama 5 minit.
+
+    ADSI menggunakan identiti proses App Pool untuk akses baca AD.
+    Tiada password pengguna diperlukan, dan kegagalan profil tidak halang login.
+    """
+    if "\\" not in user:
+        return None, None
+    initialized = False
+    translator = account = None
+    try:
+        import pythoncom
+        import win32com.client
+
+        # Waitress menggunakan worker threads; setiap thread perlu COM init.
+        pythoncom.CoInitialize()
+        initialized = True
+        translator = win32com.client.Dispatch("NameTranslate")
+        translator.Init(1, user.split("\\", 1)[0])  # ADS_NAME_INITTYPE_DOMAIN
+        translator.Set(3, user)  # ADS_NAME_TYPE_NT4
+        distinguished_name = translator.Get(1)  # ADS_NAME_TYPE_1779
+        account = win32com.client.GetObject("LDAP://" + distinguished_name)
+
+        def attribute(name):
+            try:
+                value = account.Get(name)
+            except pythoncom.com_error:
+                return None  # Atribut pilihan mungkin belum diisi dalam AD.
+            return value.strip() or None if isinstance(value, str) else None
+
+        return attribute("displayName"), attribute("mail")
+    except Exception:
+        logger.warning("Carian profil AD gagal; semak akses AD bagi App Pool.",
+                       exc_info=True)
+        return None, None
+    finally:
+        account = translator = None
+        if initialized:
+            pythoncom.CoUninitialize()
 
 
 def _read_iis_token(admin_group):
@@ -60,6 +108,14 @@ def init_app(app):
 
         g.user = user
         g.username = user.split("\\")[-1]
+        g.domain = user.split("\\", 1)[0] if "\\" in user else ""
+        if RUNNING_UNDER_IIS:
+            display_name, email = _read_ad_profile(user, int(time.monotonic() // 300))
+        else:
+            display_name = os.environ.get("DEV_DISPLAY_NAME")
+            email = os.environ.get("DEV_EMAIL")
+        g.display_name = display_name or g.username
+        g.email = email or None
         g.is_admin = is_admin
 
 

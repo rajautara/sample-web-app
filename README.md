@@ -8,6 +8,7 @@ URL: `http://tsidsgdev01:9000`
 
 Ciri:
 - Papar user yang login (`DOMAIN\username`)
+- Papar display name dan email daripada Active Directory
 - Nota peribadi setiap user (SQLite)
 - Halaman `/admin` untuk ahli AD group tertentu, dengan log akses
 
@@ -76,11 +77,33 @@ Untuk app 9001 dan 9003, salin `winauth.py` ke folder app itu, kemudian ulang la
 
 ```
 set DEV_USER=TSIDSG\nama
+set DEV_DISPLAY_NAME=Nama Pengguna
+set DEV_EMAIL=nama@example.com
 set DEV_ADMIN=1
 python app.py
 ```
 
 Buka `http://localhost:5000`. `DEV_USER` diabaikan secara automatik bila app berjalan di bawah IIS.
+
+### Display name dan email daripada Active Directory
+
+`winauth.py` menggunakan ADSI melalui `pywin32` untuk mencari akaun
+`DOMAIN\username` yang sudah disahkan oleh IIS, kemudian membaca atribut
+`displayName` dan `mail`. Maklumat tersedia sebagai `g.domain`, `g.username`,
+`g.display_name` dan `g.email`. `g.user` kekal sebagai kunci nota dan log akses.
+
+Server mesti boleh menghubungi domain controller. Identiti proses App Pool perlu
+akses baca AD. Pada server yang join domain, ApplicationPoolIdentity biasanya
+menggunakan akaun komputer server untuk akses rangkaian; jika polisi domain
+menyekatnya, gunakan identiti domain atau gMSA yang dibenarkan membaca AD.
+Tidak perlu meminta password pengguna atau memberikan hak Domain Admin.
+
+Profil dicache sehingga 5 minit bagi setiap proses. Jika carian gagal atau atribut
+kosong, display name menggunakan username dan email dipaparkan sebagai
+`Tidak tersedia`. Email diambil daripada `mail`, bukan diteka daripada username
+atau UPN. Semak log Python dan pastikan atribut tersebut diisi dalam AD.
+Uji di IIS dengan akaun domain sebenar selepas deploy; test pembangunan hanya
+menggunakan `DEV_DISPLAY_NAME` dan `DEV_EMAIL` dan tidak menghubungi AD.
 
 ## Troubleshooting
 

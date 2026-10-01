@@ -28,11 +28,20 @@
   <header>
     <strong>App 9000</strong>
     <div>
-      <span class="badge">{{ g.user }}</span>
+      <span class="badge">{{ g.display_name or g.user }}</span>
       <a href="{{ url_for('index') }}">Utama</a>
       {% if g.is_admin %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
     </div>
   </header>
-  <main>{% block content %}{% endblock %}</main>
+  <main>
+    {% if g.user %}
+    <section class="card" aria-label="Profil pengguna">
+      <h1>{{ g.display_name }}</h1>
+      <div class="muted">Domain: {{ g.domain }} · Username: {{ g.username }}</div>
+      <div class="muted">Email: {{ g.email or 'Tidak tersedia' }}</div>
+    </section>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
